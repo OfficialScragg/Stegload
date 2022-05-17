@@ -1,0 +1,127 @@
+# Date: 30/06/2021
+# Author: Scragg
+#
+# Sirvur is a lightweight HTTP server built for instant deployment anywhere.
+#
+# Why?
+#   A ready and waiting HTTP server is great for data extraction from remote servers during pentesting operations.
+#   Spin up the server in your working directory and then download the files you need.
+#
+# Options:
+#   PORT - Set the port to run the server on
+#   DIR - Root document directory 
+
+# Imports
+import requests
+import argparse
+import socket
+import threading
+import subprocess
+
+# Setup and Receive Command Line Args
+parser = argparse.ArgumentParser(description='Sirvur is a lightweight HTTP server built for instant deployment anywhere.')
+parser.add_argument('-p', '--port', dest='port', default='80', help='Set the port to run the server on')
+parser.add_argument('-d', '--dir', dest='directory', default='./', help='Root document directory')
+args = parser.parse_args()
+
+# Store Args as Global Variables
+PORT = int(args.port)
+DIR = args.directory
+IP = "" # Blank to bind to all interfaces
+SERVER = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+print("+--------+\n| Sirvur |\n+--------+\nPORT: "+str(PORT)+"\nDIR: "+DIR)
+
+# Run the HTTP Server
+def runServer():
+    # Bind Server to Socket and Wait for Client.
+    SERVER.bind((IP, PORT))
+    SERVER.listen()
+
+    # Get Client
+    while(True):
+        conn, addr = SERVER.accept()
+        client = threading.Thread(target=serveClient, args=(conn,addr,))
+        client.start()
+    
+def serveClient(conn,addr):
+    print("CONNECTED")
+    DIRECTORY = ""
+    # Req/Res Loop
+    while True:
+            # Receive Data from Client
+            data = conn.recv(1024)
+            if not data:
+                break
+            
+            # Get Values from Request
+            url = data.decode('utf-8').split(' ')[1]
+            method = data.decode('utf-8').split(' ')[0]
+            print("\n----- REQUEST ("+str(addr[0])+") -----\n"+str(method)+" : "+str(url))
+
+            # Get Directories
+            dir = subprocess.check_output('ls -ap %s' % DIRECTORY, shell=True).decode('utf-8').split('\n')
+            items = []
+            for item in dir:
+                if item[len(item)-1::] == '/':
+                    items.append([item, 'DIR'])
+                else:
+                    items.append([item, 'FILE'])
+
+            links = ''
+            for item in items:
+                if item[1] == 'DIR':
+                    links = str(links)+str('<a href="'+str(item[0])+'"><h3>'+str(item[0][0:len(item[0])-1])+'</h3></a>')
+                else:
+                    links = str(links)+str('<a href="'+str(item[0])+'"><h3>'+str(item[0])+'</h3></a>')
+
+            print("DIRECTORY: "+DIRECTORY)
+
+            # Handle Request
+            if method == 'GET':
+                # Check for item link clicks
+                print("HERE 1")
+                if url[len(url)-1] != '/':
+                    # FILE
+                    print("HERE 2")
+                    for item in items:
+                        urlParts = url.split('/')
+                        print(str(urlParts[len(urlParts)-1])+" | "+str(DIRECTORY)+str('/'+str(item[0]))+" | "+str(item[0]))
+                        if urlParts[len(urlParts)-1] == str(item[0]) and str(item[0]) != '':
+                            # Send File to Client
+                            print(str("FILE: ")+str(DIRECTORY)+str(item[0]))
+                            file = open(str(DIRECTORY)+str(item[0])).read()
+                            conn.sendall(bytes("HTTP/1.1 200 OK\nContent-Disposition: attachment; filename=\""+str(item[0])+"\"\nContent-Length: "+str(len(file))+"\nContent-Type: text/plain\n\n"+
+                                        str(file)+"\n\n", "ascii"))
+                elif url != '/':
+                    # DIRECTORY
+                    # Get Directories
+                    DIRECTORY = str(DIRECTORY)+str(url[1::])
+                    print(DIRECTORY)
+                    dir = subprocess.check_output('ls -ap %s' % DIRECTORY, shell=True).decode('utf-8').split('\n')
+                    items = []
+                    for item in dir:
+                        if item[len(item)-1::] == '/':
+                            items.append([item, 'DIR'])
+                        else:
+                            items.append([item, 'FILE'])
+
+                    links = ''
+                    for item in items:
+                        if item[1] == 'DIR':
+                            links = str(links)+str('<a href="'+str(item[0][0:len(item[0])])+'"><h3>'+str(item[0][0:len(item[0])-1])+'</h3></a>')
+                        else:
+                            links = str(links)+str('<a href="'+str(item[0])+'"><h3>'+str(item[0])+'</h3></a>')
+
+                    # Send Data to Client
+                    conn.sendall(bytes("HTTP/1.1 200 OK\nContent-Type: text/html\n\n"+"<html style=\"background-color: #363636;color: white\" lang=\"en\">"+
+                                "<head>"+"<title>Sirvur</title>"+"</head>"+"<body>"+"<center>"+"<br/><br/><br/>"+"<h1>Sirvur</h1>"+str(links)+"</center>"+"</body>"+"</html>", "ascii"))
+                else:
+                    # Send Data to Client
+                    conn.sendall(bytes("HTTP/1.1 200 OK\nContent-Type: text/html\n\n"+"<html style=\"background-color: #363636;color: white\" lang=\"en\">"+
+                                "<head>"+"<title>Sirvur</title>"+"</head>"+"<body>"+"<center>"+"<br/><br/><br/>"+"<h1>Sirvur</h1>"+str(links)+"</center>"+"</body>"+"</html>", "ascii"))
+                
+                    
+
+# Start Server
+runServer()
