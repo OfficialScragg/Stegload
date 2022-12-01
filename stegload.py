@@ -14,8 +14,8 @@ def main():
         opts, args = getopt.getopt(sys.argv[1:],"hx:l:d:o:",["extract=","load=","data=","out="])
         for opt, arg in opts:
             if opt == '-h':
-                print('Load Data: stegload -l <image_file> -d <data_file>')
-                print('Extract Data: stegload -x <image_file> -o <output_file>\n')
+                print('USAGE:\n\tLoad Data: stegload -l <image_file> -d <data_file>')
+                print('\tExtract Data: stegload -x <image_file> -o <output_file>\n')
                 sys.exit()
     except getopt.GetoptError:
         print('USAGE:\n\tLoad Data: stegload -l <image_file> -d <data_file>')
