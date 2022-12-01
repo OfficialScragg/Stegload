@@ -5,13 +5,11 @@
 
 from PIL import Image
 import sys, getopt
-from black import out
 import numpy as np
 import binascii as ba
 
 def main():
-    # Get arguments
-    extract, load, data, out = "", "", "", ""
+    # --------- Get arguments ---------
     try:
         opts, args = getopt.getopt(sys.argv[1:],"hx:l:d:o:",["extract=","load=","data=","out="])
         for opt, arg in opts:
@@ -19,19 +17,12 @@ def main():
                 print('Load Data: stegload -l <image_file> -d <data_file>')
                 print('Extract Data: stegload -x <image_file> -o <output_file>\n')
                 sys.exit()
-            elif opt in ["-x", "--extract"]:
-                extract = arg
-            elif opt in ["-l", "--load"]:
-                load = arg
-            elif opt in ["-d", "--data"]:
-                data = arg
-            elif opt in ["-o", "--out"]:
-                out = arg
     except getopt.GetoptError:
         print('USAGE:\n\tLoad Data: stegload -l <image_file> -d <data_file>')
         print('\tExtract Data: stegload -x <image_file> -o <output_file>\n')
         sys.exit(2)
-    # Check if arguments are a valid set
+        
+    # --------- Check if arguments are a valid set ---------
     if (not (len(opts) == 2 and ((opts[0][0] == '-l' and opts[1][0] == '-d') or (opts[0][0] == '-x' and opts[1][0] == '-o')))):
         print('USAGE:\n\tLoad Data: stegload -l <image_file> -d <data_file>')
         print('\tExtract Data: stegload -x <image_file> -o <output_file>\n')
@@ -44,10 +35,11 @@ def main():
         else:
             print("Unknown error please try again...")
             sys.exit(2)
-    print("+--------------------+")
-    print("| Operation Complete |")
-    print("+--------------------+")
+        print("+--------------------+")
+        print("| Operation Complete |")
+        print("+--------------------+")
 
+# --------- LOAD DATA INTO IMAGES ---------
 def loadData(imgPath, dataPath):
     try:
         initialImage = Image.open(imgPath)
@@ -56,15 +48,17 @@ def loadData(imgPath, dataPath):
         print(e)
         print("Error loading files, please check paths and try again.")
         sys.exit(2)
-    # Get binary data
+
+    # --------- Get binary data ---------
     binData = ""
     for c in data:
         cBin = "0"+str(bin(int(ba.hexlify(bytes(c, 'utf8')), 16)))[2::]
         while(len(cBin) < 8):
             cBin = "0" + cBin
         binData = binData + cBin
-    binData = binData+"00000011"
-    # Print binary payload
+    binData = binData+"00000011" # sentinel value (marks the end of our data)
+
+    # --------- Print binary payload ---------
     print("Binary payload:\n-----------------")
     for i, c in enumerate(binData):
         if(i%8 == 0):
@@ -72,7 +66,8 @@ def loadData(imgPath, dataPath):
         else:
             print(c, end="")
     print("\n")
-    # Image processing
+
+    # --------- Image processing ---------
     byteIdx = 0
     tmpImg = initialImage.convert('RGB')
     pixels = np.array(tmpImg)
@@ -89,13 +84,15 @@ def loadData(imgPath, dataPath):
                         pixels[l][p][i]-=1
                         
                 byteIdx+=1
-    # Create image
+
+    # --------- Create image ---------
     res = Image.fromarray(pixels)
     res.save("out.png")
     res.close()
     initialImage.close()
     return
 
+# --------- EXTRACT DATA FROM IMAGES ---------
 def extractData(imgPath, outPath):
     try:
         initialImage = Image.open(imgPath)
@@ -103,7 +100,8 @@ def extractData(imgPath, outPath):
     except:
         print("Error loading files, please check paths and try again.")
         sys.exit(2)
-    # Image processing
+
+    # --------- Image processing ---------
     tmpImg = initialImage.convert('RGB')
     pixels = np.array(tmpImg)
     bits = []
@@ -111,7 +109,8 @@ def extractData(imgPath, outPath):
         for p, pix in enumerate(line):
             for i in range(0,3):
                 bits.append(str(bin(pix[i]))[-1])
-    # Convert bits to text
+
+    # --------- Convert bits to text ---------
     byte = ""
     data = ""
     for i, bit in enumerate(bits):
@@ -132,5 +131,6 @@ def extractData(imgPath, outPath):
     output.close()
     return
 
+# --------- EXECUTE MAIN ON STARTUP ---------
 if __name__ == "__main__":
     main()
